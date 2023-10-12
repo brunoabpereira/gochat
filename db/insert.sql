@@ -1,29 +1,32 @@
 INSERT INTO gochat.users
-(userid,username,userhash)
+(username,userhash,usersalt,useremail)
 VALUES
-(0,'admin','ABC'),
-(1,'chris','ABC'),
-(2,'paulie','ABC'),
-(3,'tony','ABC');
-
+('admin','','','admin@example.com'),
+('chris','','','chris@example.com'),
+('paulie','','','paulie@example.com'),
+('tony','','','tony@example.com');
 
 INSERT INTO gochat.channels
-(channelid,channelname)
+(channelname)
 VALUES
-(0,'general'),
-(1,'test');
+('general'),
+('test');
 
-
-INSERT INTO gochat.channelsmembers
+INSERT INTO gochat.channelmembers
 (userid,channelid)
 VALUES
 -- Add to general channel
-(0,0), -- admin
-(1,0), -- chris
-(2,0), -- paulie
-(3,0), -- tony
+(1,1), -- admin
+(2,1), -- chris
+(3,1), -- paulie
+(4,1), -- tony
 -- Add to test channel
-(1,1), -- chris
-(3,1); -- tony
+(2,2), -- chris
+(4,2); -- tony
 
+---
 
+DROP TABLE gochat.channelsmembers;
+DROP TABLE gochat.messages;
+DROP TABLE gochat.channels;
+DROP TABLE gochat.users;

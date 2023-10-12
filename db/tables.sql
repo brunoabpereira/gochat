@@ -2,21 +2,21 @@ CREATE SCHEMA gochat;
 
 CREATE TABLE gochat.users
 (
-    userid integer NOT NULL,
+    userid SERIAL PRIMARY KEY,
     username character varying(50) NOT NULL,
     userhash character varying(200) NOT NULL,
-    CONSTRAINT users_pk PRIMARY KEY (userid)
+    usersalt character varying(200) NOT NULL,
+    useremail character varying(200) NOT NULL
 );
 
 
 CREATE TABLE gochat.channels
 (
-    channelid integer NOT NULL,
-    channelname character varying(200) NOT NULL,
-    CONSTRAINT channel_pk PRIMARY KEY (channelid)
+    channelid SERIAL PRIMARY KEY,
+    channelname character varying(200) NOT NULL
 );
 
-CREATE TABLE gochat.channelsmembers
+CREATE TABLE gochat.channelmembers
 (
     userid integer NOT NULL,
     channelid integer NOT NULL,
