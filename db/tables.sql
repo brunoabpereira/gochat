@@ -6,7 +6,9 @@ CREATE TABLE gochat.users
     username character varying(50) NOT NULL,
     userhash character varying(200) NOT NULL,
     usersalt character varying(200) NOT NULL,
-    useremail character varying(200) NOT NULL
+    useremail character varying(200) NOT NULL,
+    CONSTRAINT constraint_username UNIQUE (username),
+    CONSTRAINT constraint_useremail UNIQUE (useremail)
 );
 
 

@@ -26,7 +26,7 @@ VALUES
 
 ---
 
-DROP TABLE gochat.channelsmembers;
+DROP TABLE gochat.channelmembers;
 DROP TABLE gochat.messages;
 DROP TABLE gochat.channels;
 DROP TABLE gochat.users;

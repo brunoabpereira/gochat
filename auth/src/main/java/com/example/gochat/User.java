@@ -2,21 +2,24 @@ package com.example.gochat;
 
 import jakarta.persistence.Entity;
 import jakarta.persistence.Table;
-import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.Id;
+import jakarta.persistence.GeneratedValue;
+import jakarta.persistence.GenerationType;
 
 @Entity
 @Table(name = "users", schema="gochat")
-class User {
-    private @Id @GeneratedValue Long userid;
+public class User {
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    private Long userid;
     private String username;
     private String userhash;
     private String usersalt;
     private String useremail;
 
-    public void Employee() {}
+    public User() {}
 
-    public void Employee(String username, String userhash, String usersalt, String useremail) {
+    public User(String username, String userhash, String usersalt, String useremail) {
         this.username = username;
         this.userhash = userhash;
         this.usersalt = usersalt;
