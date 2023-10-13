@@ -12,12 +12,21 @@ public class JwtUtil {
     private static final String SECRET = "26SrjQKKdr3Av2S04thIfsXcx4lSInVGjBYk5kUZrlSYFZfmGUZ9t9pcY8Rv8J2026SrjQKKdr3Av2S04thIfsXcx4lSInVGjBYk5kUZrlSYFZfmGUZ9t9pcY8Rv8J20";
     private static final long EXPIRATION_TIME = 600_000; // 10 mins
 
-    public static String generateToken(String username) {
+    public static String generateToken(String subject) {
         return Jwts.builder()
-            .setSubject(username)
+            .setSubject(subject)
             .setExpiration(new Date(System.currentTimeMillis() + EXPIRATION_TIME))
             .signWith(SignatureAlgorithm.HS512, SECRET)
             .compact();
+    }
+
+    public static String extractSubject(String token) {
+        return Jwts.parser()
+            .setSigningKey(SECRET)
+			.build()
+            .parseSignedClaims(token)
+            .getBody()
+            .getSubject();
     }
 
     public static String salt(){

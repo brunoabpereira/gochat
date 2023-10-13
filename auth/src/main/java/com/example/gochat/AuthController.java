@@ -8,28 +8,39 @@ import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestHeader;
 import org.springframework.web.bind.annotation.ResponseBody;
+import org.springframework.web.bind.annotation.CookieValue;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.dao.DataIntegrityViolationException;
+import jakarta.servlet.http.HttpServletResponse;
+import jakarta.servlet.http.Cookie;
+import java.util.Map;
 
 @RestController
 public class AuthController {
 	
 	@Autowired
     private UserRepository userRepo;
-
+	private static final String jwtCookieName = "JWTID";
 	private static final Logger log = LoggerFactory.getLogger(AuthController.class);
 
 	@PostMapping("/api/authorize")
-	public ResponseEntity<String> authorize(@RequestBody AuthorizeRequest authReq) {
+	public void authorize(@RequestBody AuthorizeRequest authReq, HttpServletResponse response) {
 		User user = userRepo.findUserByEmail(authReq.getUseremail());
 		if ( user.getUserhash().equals(JwtUtil.hash(authReq.getPassword(),user.getUsersalt())) ){
-			String token = JwtUtil.generateToken(authReq.getUseremail());
-        	return new ResponseEntity<>(token, HttpStatus.OK);
+			String token = JwtUtil.generateToken(user.getUsername());
+			Cookie cookie = new Cookie(jwtCookieName,token);
+			cookie.setPath("/");
+			cookie.setHttpOnly(true); // this cookie will be hidden from scripts on the client side
+			cookie.setSecure(true);
+			response.addCookie(cookie);
+			response.setStatus(HttpStatus.OK.value());
+		}else {
+			response.setStatus(HttpStatus.UNAUTHORIZED.value());
 		}
-		return new ResponseEntity<>(null, HttpStatus.UNAUTHORIZED);
 	}
 
 	@PostMapping("/api/users")
@@ -43,7 +54,7 @@ public class AuthController {
 			regReq.getUseremail());
 		try {
 			userRepo.saveAndFlush(user);
-			return new ResponseEntity<>(null,HttpStatus.OK);
+			return new ResponseEntity<>(null, HttpStatus.OK);
 		}catch(DataIntegrityViolationException e){
 			log.error("test" + e.toString());
 			ErrorResponse err = null;
@@ -52,13 +63,17 @@ public class AuthController {
 			}else if (e.toString().contains("constraint_useremail")){
 				err = new ErrorResponse("Email already used.");
 			}
-			return new ResponseEntity<>(err,HttpStatus.OK);
+			return new ResponseEntity<>(err, HttpStatus.OK);
 		}
 	}
 
-	@DeleteMapping("/api/users/{id}")
-	public void deleteUser(@PathVariable Long id) {
-		log.info("deleteUser");
+	@DeleteMapping("/api/users")
+	public void deleteUser(@CookieValue(jwtCookieName) String jwtCookie, HttpServletResponse response) {
+		if ( JwtUtil.extractSubject(jwtCookie).equals("admin") ){
+			response.setStatus(HttpStatus.OK.value());
+		}else {
+			response.setStatus(HttpStatus.UNAUTHORIZED.value());
+		}
 	}
 
 }
@@ -77,6 +92,22 @@ class ErrorResponse{
 	public void setError(String error){
 		this.error = error;
 	}
+}
+
+class DeleteRequest {
+	private String useremail;
+
+	public DeleteRequest(String useremail){
+		this.useremail = useremail;
+	}
+
+	public void setUseremail(String useremail) {
+        this.useremail = useremail;
+    }
+
+	public String getUseremail() {
+        return this.useremail;
+    }
 }
 
 class AuthorizeRequest {
