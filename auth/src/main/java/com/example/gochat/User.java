@@ -57,4 +57,8 @@ public class User {
     public String getUseremail() {
         return this.useremail;
     }
+
+    public Long getUserid() {
+        return this.userid;
+    }
 }

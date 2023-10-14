@@ -2,14 +2,10 @@ package com.example.gochat;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.RestController;
-import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestBody;
-import org.springframework.web.bind.annotation.RequestHeader;
-import org.springframework.web.bind.annotation.ResponseBody;
 import org.springframework.web.bind.annotation.CookieValue;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
@@ -17,7 +13,6 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.dao.DataIntegrityViolationException;
 import jakarta.servlet.http.HttpServletResponse;
 import jakarta.servlet.http.Cookie;
-import java.util.Map;
 
 @RestController
 public class AuthController {
@@ -30,7 +25,9 @@ public class AuthController {
 	@PostMapping("/api/authorize")
 	public void authorize(@RequestBody AuthorizeRequest authReq, HttpServletResponse response) {
 		User user = userRepo.findUserByEmail(authReq.getUseremail());
-		if ( user.getUserhash().equals(JwtUtil.hash(authReq.getPassword(),user.getUsersalt())) ){
+		if (user == null) {
+			response.setStatus(HttpStatus.BAD_REQUEST.value());
+		}else if ( user.getUserhash().equals(JwtUtil.hash(authReq.getPassword(),user.getUsersalt())) ){
 			String token = JwtUtil.generateToken(user.getUsername());
 			Cookie cookie = new Cookie(jwtCookieName,token);
 			cookie.setPath("/");
@@ -63,14 +60,20 @@ public class AuthController {
 			}else if (e.toString().contains("constraint_useremail")){
 				err = new ErrorResponse("Email already used.");
 			}
-			return new ResponseEntity<>(err, HttpStatus.OK);
+			return new ResponseEntity<>(err, HttpStatus.BAD_REQUEST);
 		}
 	}
 
 	@DeleteMapping("/api/users")
-	public void deleteUser(@CookieValue(jwtCookieName) String jwtCookie, HttpServletResponse response) {
+	public void deleteUser(@CookieValue(jwtCookieName) String jwtCookie, @RequestBody DeleteRequest delReq, HttpServletResponse response) {
 		if ( JwtUtil.extractSubject(jwtCookie).equals("admin") ){
-			response.setStatus(HttpStatus.OK.value());
+			User user = userRepo.findUserByEmail(delReq.getUseremail());
+			if ( user == null ){
+				response.setStatus(HttpStatus.BAD_REQUEST.value());
+			}else {
+				userRepo.deleteById(user.getUserid().intValue());
+				response.setStatus(HttpStatus.OK.value());
+			}
 		}else {
 			response.setStatus(HttpStatus.UNAUTHORIZED.value());
 		}
@@ -97,6 +100,8 @@ class ErrorResponse{
 class DeleteRequest {
 	private String useremail;
 
+	public DeleteRequest(){}
+
 	public DeleteRequest(String useremail){
 		this.useremail = useremail;
 	}
@@ -113,6 +118,8 @@ class DeleteRequest {
 class AuthorizeRequest {
 	private String useremail;
 	private String password;
+
+	public AuthorizeRequest(){}
 
 	public AuthorizeRequest(String useremail, String password){
 		this.useremail = useremail;
@@ -140,6 +147,8 @@ class RegisterUserRequest {
 	private String username;
 	private String useremail;
 	private String password;
+
+	public RegisterUserRequest(){}
 
 	public RegisterUserRequest(String username, String useremail, String password){
 		this.username = username;

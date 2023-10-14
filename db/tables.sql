@@ -23,8 +23,8 @@ CREATE TABLE gochat.channelmembers
     userid integer NOT NULL,
     channelid integer NOT NULL,
     CONSTRAINT channelsmembers_pk PRIMARY KEY (userid, channelid),
-    CONSTRAINT fk_users_userid FOREIGN KEY (userid) REFERENCES gochat.users(userid),
-    CONSTRAINT fk_channels_channelid FOREIGN KEY (channelid) REFERENCES gochat.channels(channelid)
+    CONSTRAINT fk_users_userid FOREIGN KEY (userid) REFERENCES gochat.users(userid) ON DELETE CASCADE,
+    CONSTRAINT fk_channels_channelid FOREIGN KEY (channelid) REFERENCES gochat.channels(channelid) ON DELETE CASCADE
 );
 
 CREATE TABLE gochat.messages
