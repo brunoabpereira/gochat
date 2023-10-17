@@ -5,6 +5,7 @@ import (
 	"net/http"
 	"strconv"
 	"time"
+	"encoding/json"
 	"github.com/gorilla/websocket"
 	"gorm.io/driver/postgres"
 	"gorm.io/gorm"
@@ -15,6 +16,20 @@ type Message struct {
     Messagetext string
     Userid int
     Channelid int
+}
+
+type User struct {
+	Userid int
+    Username string
+    Userhash string
+    Usersalt string
+    Useremail string
+}
+
+type ChatMessage struct {
+	Username string
+	Text string
+	Timestamp string
 }
 
 type Payload struct {
@@ -37,8 +52,11 @@ func userIdFromCookie(cookie http.Cookie) int{
 	return val
 }
 
-func createHandler(channels *map[int]Channel, messageQ chan<- *Message, upgrader websocket.Upgrader) func(http.ResponseWriter,*http.Request){
+func createHandler(channels *map[int]Channel, messageQ chan<- *Message, upgrader websocket.Upgrader, db *gorm.DB) func(http.ResponseWriter,*http.Request){
 	return func (w http.ResponseWriter, r *http.Request) {
+		upgrader.CheckOrigin = func(r *http.Request) bool { 
+			return true 
+		}
 		conn, err := upgrader.Upgrade(w, r, nil)
 		if err != nil {
 			log.Println(err)
@@ -47,12 +65,13 @@ func createHandler(channels *map[int]Channel, messageQ chan<- *Message, upgrader
 		defer conn.Close()
 		log.Println("New connection from",conn.RemoteAddr().String())
 		
-		cookie, err := r.Cookie("userid")
-		if err != nil {
-			log.Println(err)
-			return
-		}
-		var client Client = Client{Userid: userIdFromCookie(*cookie)}
+		// cookie, err := r.Cookie("userid")
+		// if err != nil {
+		// 	log.Println(err)
+		// 	return
+		// }
+		// var client Client = Client{Userid: userIdFromCookie(*cookie)}
+		var client Client = Client{Userid: 2}
 		var channel Channel
 		var inChannel bool = false
 
@@ -76,13 +95,15 @@ func createHandler(channels *map[int]Channel, messageQ chan<- *Message, upgrader
 				channel = val
 				client.Conn = conn
 				if exists {
-					_, exists := channel.Clients[client.Userid]
-					if exists {
-						log.Printf("Client %d already in Channel %d",client.Userid,channel.ChannelId)
-						return
-					}else {
-						channel.Clients[client.Userid] = client
-					}
+					// _, exists := channel.Clients[client.Userid]
+					// if exists {
+					// 	log.Printf("Client %d already in Channel %d",client.Userid,channel.ChannelId)
+					// 	return
+					// }else {
+					// 	channel.Clients[client.Userid] = client
+					// }
+
+					channel.Clients[client.Userid] = client
 				}else{
 					channel = Channel{
 						Clients: map[int]Client{client.Userid: client},
@@ -92,6 +113,34 @@ func createHandler(channels *map[int]Channel, messageQ chan<- *Message, upgrader
 				}
 
 				inChannel = true
+			case "get":
+				if inChannel {
+					msgNum, err := strconv.Atoi(p.Value)
+					if err != nil {
+						log.Println(err)
+						break
+					}
+					var msgs []Message
+					db.Where("channelid = ?",channel.ChannelId).Order("messagetime DESC").Limit(msgNum).Offset(0).Find(&msgs)
+					
+					var chatMsgs [] ChatMessage
+					for i := range msgs {
+						var user User
+						db.First(&user, msgs[i].Userid)
+						chatMsgs = append(chatMsgs, ChatMessage{
+							Username: user.Username,
+							Text: msgs[i].Messagetext,
+							Timestamp: msgs[i].Messagetime.Format("2006-01-02 15:04:05"),
+						})
+					}
+					b, err := json.Marshal(chatMsgs)
+					if err != nil {
+						log.Println("Failed to convert msg struct to json")
+						break
+					}
+
+					client.Conn.WriteMessage(websocket.TextMessage, b)
+				}
 			case "send":
 				if inChannel {
 					msg := Message{
@@ -117,6 +166,8 @@ func createHandler(channels *map[int]Channel, messageQ chan<- *Message, upgrader
 					delete(channel.Clients, client.Userid)
 				}
 
+				log.Printf("Client %d left channel %d",client.Userid,channelId)
+
 				return
 			}
 		}
@@ -133,7 +184,20 @@ func channelLoop(db *gorm.DB, connList *map[int]Channel, messageQ <-chan *Messag
 		clients := channel.Clients
 		for clientId := range clients {
 			conn := clients[clientId].Conn
-			err := (*conn).WriteMessage(websocket.TextMessage, []byte(msg.Messagetext))
+			
+			var user User
+			db.First(&user, msg.Userid)
+			b, err := json.Marshal(ChatMessage{
+				Username: user.Username,
+				Text: msg.Messagetext,
+				Timestamp: msg.Messagetime.Format("2006-01-02 15:04:05"),
+			})
+			if err != nil {
+				log.Println("Failed to convert msg struct to json")
+				break
+			}
+
+			err = (*conn).WriteMessage(websocket.TextMessage, b)
 			if err != nil{
 				delete(clients,clientId)
 				log.Printf("Removing Client %d from Channel %d: %s",clientId,channel.ChannelId,err)
@@ -160,10 +224,10 @@ func main() {
 
 	go channelLoop(db, &connList, messageQ)
 
-	handler := createHandler(&connList, messageQ, upgrader)
+	handler := createHandler(&connList, messageQ, upgrader, db)
 	http.HandleFunc("/ws", handler)
 	server := &http.Server{
-		Addr:              "localhost:8080",
+		Addr:              "localhost:9000",
 		ReadHeaderTimeout: 3 * time.Second,
 	}
 	log.Println("Listening...")
