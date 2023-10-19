@@ -97,6 +97,7 @@ func createHandler(channels *map[int]Channel, messageQ chan<- *Message, upgrader
 	return func (w http.ResponseWriter, r *http.Request) {
 		_, auth := verifyUser(r)
 		if !auth {
+			w.WriteHeader(http.StatusUnauthorized)
 			return
 		}
 		// var client Client = Client{Userid: userIdFromCookie(*cookie)}
