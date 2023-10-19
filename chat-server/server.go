@@ -2,14 +2,55 @@ package main
 
 import (
 	"log"
+	"fmt"
 	"net/http"
 	"strconv"
 	"time"
 	"encoding/json"
+	"encoding/base64"
 	"github.com/gorilla/websocket"
 	"gorm.io/driver/postgres"
 	"gorm.io/gorm"
+	"github.com/golang-jwt/jwt/v5"
 )
+
+var base64HmacSecret = "26SrjQKKdr3Av2S04thIfsXcx4lSInVGjBYk5kUZrlSYFZfmGUZ9t9pcY8Rv8J2026SrjQKKdr3Av2S04thIfsXcx4lSInVGjBYk5kUZrlSYFZfmGUZ9t9pcY8Rv8J20"
+
+func parseToken(tokenString string) (*jwt.Token, error) {
+	token, err := jwt.Parse(tokenString, func(token *jwt.Token) (interface{}, error) {
+		if _, ok := token.Method.(*jwt.SigningMethodHMAC); !ok {
+			return nil, fmt.Errorf("Unexpected signing method: %v", token.Header["alg"])
+		}
+		hmacSecret, _ := base64.StdEncoding.DecodeString(base64HmacSecret)
+		return hmacSecret, nil
+	})
+
+	return token, err
+}
+
+func verifyUser(r *http.Request) (jwt.MapClaims, bool) {
+	jwtid, err := r.Cookie("JWTID")
+
+	if err != nil {
+		log.Println("Cookie \"JWTID\" not set")
+		return nil, false
+	}
+
+	token, err := parseToken(jwtid.Value)
+	if err != nil{
+		log.Println(err)
+		return nil, false
+	}
+
+	claims, ok := token.Claims.(jwt.MapClaims)
+
+	if ok && !token.Valid {
+		log.Println("Cookie \"JWTID\" is not valid")
+		return nil, false
+	}
+
+	return claims, true
+}
 
 type Message struct {
     Messagetime time.Time
@@ -54,6 +95,13 @@ func userIdFromCookie(cookie http.Cookie) int{
 
 func createHandler(channels *map[int]Channel, messageQ chan<- *Message, upgrader websocket.Upgrader, db *gorm.DB) func(http.ResponseWriter,*http.Request){
 	return func (w http.ResponseWriter, r *http.Request) {
+		_, auth := verifyUser(r)
+		if !auth {
+			return
+		}
+		// var client Client = Client{Userid: userIdFromCookie(*cookie)}
+		
+		
 		upgrader.CheckOrigin = func(r *http.Request) bool { 
 			return true 
 		}
@@ -65,12 +113,6 @@ func createHandler(channels *map[int]Channel, messageQ chan<- *Message, upgrader
 		defer conn.Close()
 		log.Println("New connection from",conn.RemoteAddr().String())
 		
-		// cookie, err := r.Cookie("userid")
-		// if err != nil {
-		// 	log.Println(err)
-		// 	return
-		// }
-		// var client Client = Client{Userid: userIdFromCookie(*cookie)}
 		var client Client = Client{Userid: 2}
 		var channel Channel
 		var inChannel bool = false
@@ -178,7 +220,7 @@ func channelLoop(db *gorm.DB, connList *map[int]Channel, messageQ <-chan *Messag
 	for {
 		msg := <- messageQ
 		// persist
-		go writeToDb(db, msg)
+		go db.Create(&msg)
 		// send to chat channel
 		channel := (*connList)[msg.Channelid]
 		clients := channel.Clients
@@ -204,10 +246,6 @@ func channelLoop(db *gorm.DB, connList *map[int]Channel, messageQ <-chan *Messag
 			}
 		}
 	}
-}
-
-func writeToDb(db *gorm.DB, msg *Message){
-	db.Create(&msg)
 }
 
 func main() {
