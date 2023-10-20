@@ -9,6 +9,9 @@ import (
 	"github.com/gin-contrib/sessions/cookie"
 	"github.com/golang-jwt/jwt/v5"
 	"encoding/base64"
+	// "encoding/json"
+	"gorm.io/driver/postgres"
+	"gorm.io/gorm"
 	"log"
 	"fmt"
 )
@@ -101,16 +104,70 @@ func home(c *gin.Context) {
 	c.HTML(http.StatusOK, "home.html", nil)
 }
 
-func channels(c *gin.Context) {
+func logout(c *gin.Context) {
 	_, auth := verifyUser(c)
 	if !auth {
-		c.Redirect(http.StatusFound, "/login")
 		return
 	}
 
+	cookie, err := c.Request.Cookie("JWTID")
+	
+	if err != nil {
+		log.Println("Cookie \"JWTID\" not set")
+		return
+	}
+
+	c.SetCookie(
+		cookie.Name,
+		cookie.Value,
+		-1,
+		cookie.Path,
+		cookie.Domain,
+		cookie.Secure,
+		cookie.HttpOnly,
+	)
+
+	c.Redirect(http.StatusFound, "/")
 }
 
 /*
+	API
+*/
+
+func users(c *gin.Context, db *gorm.DB) {
+	claims, auth := verifyUser(c)
+	if !auth {
+		c.Status(http.StatusUnauthorized)
+		return
+	}
+	
+	if username, ok := claims["sub"]; !ok {
+		return
+	}else{
+		response := make(map[string]interface{})
+
+		userRes :=  make(map[string]interface{})
+		err := db.Table("users").Select("userid","username","useremail").Where("username = ?",username).Take(&userRes).Error
+		if err != nil {
+			log.Println(err)
+			return
+		}
+		response["username"] = userRes["username"]
+		response["useremail"] = userRes["useremail"]
+		
+		channelsRes := make([]map[string]interface{},0)
+		err = db.Raw("SELECT * FROM getUsersChannels(?)",userRes["username"]).Scan(&channelsRes).Error
+		if err != nil {
+			log.Println(err)
+			return
+		}
+		response["channels"] = channelsRes
+
+		c.JSON(200,response)
+	}
+}
+
+/*	
 	handlers not accessable to auth users
 */
 
@@ -133,6 +190,13 @@ func register(c *gin.Context) {
 }
 
 func main() {
+	var dsn string = "host=localhost user=gochat password=gochat dbname=gochat port=5432 sslmode=disable"
+	db, err := gorm.Open(postgres.Open(dsn), &gorm.Config{})
+	if err != nil {
+		log.Fatalln(err)
+		return
+	}
+
 	r := gin.Default()
 	r.LoadHTMLGlob("templates/*")
 	r.Static("/static", "./static")
@@ -142,9 +206,15 @@ func main() {
 
 	r.GET("/", index)
 	r.GET("/login", login)
+	r.GET("/logout", logout)
 	r.GET("/register", register)
 	r.GET("/home", home)
-	r.GET("/api/channels", channels)
+	r.GET(
+		"/api/users", 
+		func(c *gin.Context){
+			users(c,db)
+		},
+	)
 
 	// proxy requests to auth service
 	proxy := proxyHandler("http://localhost:9999")
