@@ -11,7 +11,7 @@ import io.jsonwebtoken.*;
 public class JwtUtil {
     // SECRET is encoded with base64
     private static final String SECRET = "26SrjQKKdr3Av2S04thIfsXcx4lSInVGjBYk5kUZrlSYFZfmGUZ9t9pcY8Rv8J2026SrjQKKdr3Av2S04thIfsXcx4lSInVGjBYk5kUZrlSYFZfmGUZ9t9pcY8Rv8J20";
-    private static final long EXPIRATION_TIME = 600_000; // 10 mins
+    private static final long EXPIRATION_TIME = 1800_000; // 30 mins
 
     public static String generateToken(String subject) {
         return Jwts.builder()

@@ -1,6 +1,24 @@
 import { useState } from 'react';
 import { useRef } from 'react';
 import { useEffect } from 'react';
+import axios from "axios";
+
+function UserDropDown({appState}){
+  return (
+    <div class="dropdown">
+      <a href="#" class="d-flex align-items-center text-white text-decoration-none dropdown-toggle" data-bs-toggle="dropdown" aria-expanded="false">
+        <img src='/static/brand/person-circle.svg' width="20" height="20"></img>
+        <strong class="p-1" >{appState.username}</strong>
+      </a>
+      <ul class="dropdown-menu dropdown-menu-dark text-small shadow">
+        <li><a class="dropdown-item" href="#">Settings</a></li>
+        <li><a class="dropdown-item" href="#">Profile</a></li>
+        <li><hr class="dropdown-divider"/></li>
+        <li><a class="dropdown-item" href="/logout">Sign out</a></li>
+      </ul>
+    </div>
+  );
+}
 
 function Input({innerRef, enterHandler}){
   return (
@@ -52,40 +70,42 @@ function Message({ msg }){
   );
 }
 
-const ws = new WebSocket('ws://localhost:9000/ws');
+var ws = null;
 
-function Chat(){
+function Chat({appState, setAppState}){
   const inputRef = useRef(null);
   const [msgs, setMsgs] = useState([]);
 
+  useEffect(() => {
+    if (!ws) {
+      ws = new WebSocket('ws://localhost:9000/ws')  
+    }
+
+    ws.onopen = () => {
+      ws.send(JSON.stringify(joinChannel));
+      ws.send(JSON.stringify(getMsgs));
+    };
+    
+    ws.onmessage = (event) => {
+      const response = JSON.parse(event.data);
+      if (response) {
+        if (Array.isArray(response)){
+          setMsgs(oldMsgs => [...oldMsgs, ...(response.reverse())]);
+        }else {
+          setMsgs(oldMsgs => [...oldMsgs, response]);
+        }
+      }
+    };
+  });
+
   const joinChannel = {
     Op: "join",
-    Value: "1",
+    Value: appState.currChannel.channelid.toString(),
   };
 
   const getMsgs = {
     Op: "get",
     Value: "20",
-  };
-
-  ws.onopen = () => {
-    ws.send(JSON.stringify(joinChannel));
-    ws.send(JSON.stringify(getMsgs));
-  };
-  
-  ws.onmessage = (event) => {
-    const response = JSON.parse(event.data);
-    if (response) {
-      if (Array.isArray(response)){
-        setMsgs(oldMsgs => [...oldMsgs, ...(response.reverse())]);
-      }else {
-        setMsgs(oldMsgs => [...oldMsgs, response]);
-      }
-    }
-  };
-
-  ws.onclose = () => {
-    ws.close();
   };
 
   var sendHandler = () => {
@@ -104,7 +124,7 @@ function Chat(){
   }
 
   var enterHandler = (event) => {
-    if (event.key != "Enter") {
+    if (event.key !== "Enter") {
       return
     }
     var text = inputRef.current.value;
@@ -123,25 +143,29 @@ function Chat(){
 
   const leaveChannel = {
     Op: "leave",
-    Value: "1",
+    Value: appState.currChannel.channelid.toString(),
   };
 
   var leaveHandler = () => {
     ws.send(
       JSON.stringify(leaveChannel)
     );
-    window.location.replace("/channels")
+    ws.close()
+    ws = null
+    setAppState({
+      ...appState,
+      view: "channels"
+    })
   }
 
-  var channelName = "channel#1"
   return (
     <div class="container">
       <div class="row">
         <div class="col px-0">
-          <h3 class="bg-body rounded py-1 px-1">{channelName}</h3>
+          <h3 class="bg-body rounded py-1 px-1">{appState.currChannel.channelname}</h3>
         </div>
-        <div class="col col-sm-2 px-0">
-          <button class="btn btn-secondary py-2 mb-2 float-end" onClick={leaveHandler}>leave</button>
+        <div class="col col-sm-2 p-1">
+          <UserDropDown appState={appState}/>
         </div>
       </div>
       <div class="row">
@@ -154,17 +178,117 @@ function Chat(){
         <div class="col col-sm-2">
           <SendButton sendHandler={sendHandler}/>
         </div>
+        <div class="col col-sm-2">
+          <button class="btn btn-secondary py-2 mb-2 float-end" onClick={leaveHandler}>leave</button>
+        </div>
       </div>
     </div>
   );
 }
 
-function App() {
+function AddChannel(){
   return (
-    <div className="App">
-      <Chat />
+    <div class="card text-body-secondary mt-2">
+    <div class="container p-1">
+      <div class="row">
+        <div class="col">
+          <button type="button" class="btn p-0 m-2">
+          <img src='/static/brand/plus-square-dotted.svg' width="50" height="50"></img>
+          </button>
+        </div>
+      </div>
+    </div>
     </div>
   );
+}
+
+function ChannelItem({appState, setAppState, channel}){
+  var channelHandler = () => {
+    setAppState({
+      ...appState,
+      view: "chat",
+      currChannel: {...channel}
+    })
+  }
+  return (
+    <div class="card text-body-secondary mt-2">
+      <div class="container p-1">
+        <div class="row">
+          <div class="col col-sm-2">
+            <button type="button" class="btn p-0 m-2" onClick={channelHandler}>
+            <img src='/static/brand/arrow-right-square-fill.svg' width="50" height="50"></img>
+            </button>
+          </div>
+          <div class="col my-2 pl-0">
+           <p class="text-gray-dark fs-4 m-2">{channel.channelname}</p>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function ChannelList({appState, setAppState}){
+  useEffect(() => {    
+    axios.get("http://localhost:8000/api/users").then((response) => {
+      if (response.status == 200){
+        setAppState({
+          ...appState,
+          username: response.data.username,
+          useremail: response.data.useremail,
+          channelList: response.data.channels
+        })
+      }
+    });
+  },[]);
+
+  return (
+    <main class="container-sm">
+      <div class="row">
+        <div class="col px-0">
+          <h3 class="bg-body rounded py-1 px-1">My Channels</h3>
+        </div>
+        <div class="col col-sm-2 p-1">
+          <UserDropDown appState={appState}/>
+        </div>
+      </div>
+      <div class="row">
+        <div class="overflow-auto p-3 bg-body rounded shadow-sm" style={{ maxHeight: "300px" }}>
+          <AddChannel />
+          {
+            appState.channelList?.map((channel) => <ChannelItem key={channel.channelid} channel={channel} appState={appState} setAppState={setAppState}/>)
+          }
+        </div>
+      </div>
+    </main>
+  );
+}
+
+function App() {
+  const [appState, setAppState] = useState({
+    view: "channels",
+    username: "",
+    useremail: "",
+    channelList: [],
+    currChannel: {},
+  });
+
+  switch(appState.view){
+    case "chat":
+      return (
+        <div className="App">
+          <Chat appState={appState} setAppState={setAppState}/>
+        </div>
+      );
+    case "channels":
+      return (
+        <div className="App">
+          <ChannelList  appState={appState} setAppState={setAppState}/>
+        </div>
+      );
+    default:
+      return
+  }
 }
 
 

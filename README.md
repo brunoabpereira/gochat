@@ -3,7 +3,7 @@
 
 compile
 ```
- mvn clean package -DskipTests
+mvn clean package -DskipTests
 ```
 build image
 ```

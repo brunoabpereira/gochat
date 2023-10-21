@@ -11,6 +11,8 @@ services:
       - POSTGRES_PASSWORD=gochat
       - POSTGRES_USER=gochat
       - POSTGRES_DB=gochat
+    profiles:
+      - all
 
   auth:
     image: "spring-auth:latest"
@@ -23,6 +25,10 @@ services:
       - POSTGRES_DB=gochat
       - POSTGRES_HOST=postgresql
       - POSTGRES_PORT=5432
+    depends_on:
+      - postgresql
+    profiles:
+      - all
 
 volumes:
   db:
