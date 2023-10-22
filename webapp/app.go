@@ -101,7 +101,7 @@ func home(c *gin.Context) {
 	// session.Set("test","ok")
 	// session.Save()
 
-	c.HTML(http.StatusOK, "home.html", nil)
+	c.HTML(http.StatusOK, "index.html", nil)
 }
 
 func logout(c *gin.Context) {
@@ -198,8 +198,8 @@ func main() {
 	}
 
 	r := gin.Default()
-	r.LoadHTMLGlob("templates/*")
-	r.Static("/static", "./static")
+	r.LoadHTMLGlob("chat-client/build/*.html")
+	r.Static("/static", "./chat-client/build/static")
 
 	store := cookie.NewStore([]byte("secret"))
 	r.Use(sessions.Sessions("session", store))

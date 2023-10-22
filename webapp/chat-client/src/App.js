@@ -7,10 +7,11 @@ function UserDropDown({appState}){
   return (
     <div class="dropdown">
       <a href="#" class="d-flex align-items-center text-white text-decoration-none dropdown-toggle" data-bs-toggle="dropdown" aria-expanded="false">
-        <img src='/static/brand/person-circle.svg' width="20" height="20"></img>
-        <strong class="p-1" >{appState.username}</strong>
+        <img src='/static/assets/person-circle.svg' width="20" height="20"></img>
+        <strong class="p-2" >{appState.username}</strong>
       </a>
       <ul class="dropdown-menu dropdown-menu-dark text-small shadow">
+        <li class=""><p class="mx-1 px-2 bg-body rounded">{appState.useremail}</p></li>
         <li><a class="dropdown-item" href="#">Settings</a></li>
         <li><a class="dropdown-item" href="#">Profile</a></li>
         <li><hr class="dropdown-divider"/></li>
@@ -22,7 +23,7 @@ function UserDropDown({appState}){
 
 function Input({innerRef, enterHandler}){
   return (
-    <input ref={innerRef} class="px-0 form-control" onKeyDown={enterHandler}></input>
+    <input ref={innerRef} class="form-control" onKeyDown={enterHandler}></input>
   );
 }
 
@@ -161,11 +162,13 @@ function Chat({appState, setAppState}){
   return (
     <div class="container">
       <div class="row">
-        <div class="col px-0">
-          <h3 class="bg-body rounded py-1 px-1">{appState.currChannel.channelname}</h3>
-        </div>
-        <div class="col col-sm-2 p-1">
-          <UserDropDown appState={appState}/>
+        <div class="d-flex px-0">
+          <div class="py-1 pe-1 flex-grow-1">
+            <h3 class="bg-body rounded py-1 px-1">{appState.currChannel.channelname}</h3>
+          </div>
+          <div class="py-1 ps-1 ">
+            <UserDropDown appState={appState}/>
+          </div>
         </div>
       </div>
       <div class="row">
@@ -193,7 +196,7 @@ function AddChannel(){
       <div class="row">
         <div class="col">
           <button type="button" class="btn p-0 m-2">
-          <img src='/static/brand/plus-square-dotted.svg' width="50" height="50"></img>
+          <img src='/static/assets/plus-square-dotted.svg' width="50" height="50"></img>
           </button>
         </div>
       </div>
@@ -216,7 +219,7 @@ function ChannelItem({appState, setAppState, channel}){
         <div class="row">
           <div class="col col-sm-2">
             <button type="button" class="btn p-0 m-2" onClick={channelHandler}>
-            <img src='/static/brand/arrow-right-square-fill.svg' width="50" height="50"></img>
+            <img src='/static/assets/arrow-right-square-fill.svg' width="50" height="50"></img>
             </button>
           </div>
           <div class="col my-2 pl-0">
@@ -245,11 +248,13 @@ function ChannelList({appState, setAppState}){
   return (
     <main class="container-sm">
       <div class="row">
-        <div class="col px-0">
-          <h3 class="bg-body rounded py-1 px-1">My Channels</h3>
-        </div>
-        <div class="col col-sm-2 p-1">
-          <UserDropDown appState={appState}/>
+        <div class="d-flex px-0">
+          <div class="py-1 pe-1 flex-grow-1">
+            <h3 class="bg-body rounded py-1 px-1">My Channels</h3>
+          </div>
+          <div class="py-1 ps-1 ">
+            <UserDropDown appState={appState}/>
+          </div>
         </div>
       </div>
       <div class="row">
