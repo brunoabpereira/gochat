@@ -1,0 +1,4 @@
+chat-client/build
+chat-client/node_modules
+chat-client/coverage
+.vscode
