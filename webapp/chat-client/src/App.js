@@ -79,7 +79,7 @@ function Chat({appState, setAppState}){
 
   useEffect(() => {
     if (!ws) {
-      ws = new WebSocket('ws://localhost:9000/ws')  
+      ws = new WebSocket("ws://"+document.location.host+"/ws")  
     }
 
     ws.onopen = () => {
@@ -233,7 +233,7 @@ function ChannelItem({appState, setAppState, channel}){
 
 function ChannelList({appState, setAppState}){
   useEffect(() => {    
-    axios.get("http://localhost:8000/api/users").then((response) => {
+    axios.get("http://"+document.location.host+"/api/users").then((response) => {
       if (response.status == 200){
         setAppState({
           ...appState,

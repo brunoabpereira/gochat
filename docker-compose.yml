@@ -4,8 +4,8 @@ services:
 
   postgresql:
     image: "postgres:16.0"
-    ports:
-      - 5432:5432
+    # ports:
+    #   - 5432:5432
     volumes: 
       - db:/var/lib/postgresql/data
     environment:
@@ -17,8 +17,8 @@ services:
 
   auth:
     image: "spring-auth:latest"
-    ports:
-      - 9999:9999
+    # ports:
+    #   - 9999:9999
     environment:
       - SERVER_PORT=9999
       - POSTGRES_PASSWORD=gochat
@@ -31,17 +31,17 @@ services:
     profiles:
       - all
   
-  chat:
+  chatserver:
     image: "chat-server:latest"
-    ports:
-      - 9000:9000
+    # ports:
+    #   - 9000:9000
     environment:
       - POSTGRES_PASSWORD=gochat
       - POSTGRES_USER=gochat
       - POSTGRES_DB=gochat
       - POSTGRES_HOST=postgresql
       - POSTGRES_PORT=5432
-      - SERVER_HOST=chat
+      - SERVER_HOST=chatserver
       - SERVER_PORT=9000
     depends_on:
       - postgresql
@@ -51,20 +51,27 @@ services:
 
   webapp:
     image: "webapp:latest"
-    ports:
-      - 8000:8000
+    # ports:
+    #   - 8000:8000
     environment:
       - POSTGRES_PASSWORD=gochat
       - POSTGRES_USER=gochat
       - POSTGRES_DB=gochat
       - POSTGRES_HOST=postgresql
       - POSTGRES_PORT=5432
-      - AUTH_HOST=auth
-      - AUTH_PORT=9999
     depends_on:
       - postgresql
       - auth
-      - chat
+      - chatserver
+    profiles:
+      - all
+
+  nginx:
+    image: "nginx:1.25-alpine"
+    volumes:
+      - ./nginx/nginx.conf:/etc/nginx/nginx.conf
+    ports:
+      - 80:80
     profiles:
       - all
 

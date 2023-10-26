@@ -5,8 +5,6 @@ import (
 	"fmt"
 	"log"
 	"net/http"
-	"net/http/httputil"
-	"net/url"
 	"os"
 	"github.com/gin-gonic/gin"
 	"github.com/golang-jwt/jwt/v5"
@@ -50,29 +48,6 @@ func verifyUser(c *gin.Context) (jwt.MapClaims, bool) {
 	}
 
 	return claims, true
-}
-
-func proxyHandler(upstream string) func (c *gin.Context){
-	return func (c *gin.Context) {
-		remote, err := url.Parse(upstream)
-		if err != nil {
-			log.Println(err)
-			return
-		}
-	
-		proxy := httputil.NewSingleHostReverseProxy(remote)
-		proxy.Director = func(req *http.Request) {
-			req.Header = c.Request.Header
-			req.Host = remote.Host
-			req.URL.Scheme = remote.Scheme
-			req.URL.Host = remote.Host
-			req.URL.Path = c.Request.URL.Path
-		}
-	
-		log.Printf("Proxy request %s -> %s \n",c.Request.URL,remote.Host+c.Request.URL.Path)
-	
-		proxy.ServeHTTP(c.Writer, c.Request)
-	}
 }
 
 /*
@@ -197,8 +172,6 @@ func main() {
 	dbName := getEnvVar("POSTGRES_DB", "gochat")
 	dbUser := getEnvVar("POSTGRES_USERNAME", "gochat")
 	dbPassword := getEnvVar("POSTGRES_PASSWORD", "gochat")
-	authHost := getEnvVar("AUTH_HOST", "localhost")
-	authPort := getEnvVar("AUTH_PORT", "9999")
 
 	dsn := fmt.Sprintf(
 		"host=%s user=%s password=%s dbname=%s port=%s sslmode=disable",
@@ -225,11 +198,6 @@ func main() {
 			users(c,db)
 		},
 	)
-
-	// proxy requests to auth service
-	proxy := proxyHandler(fmt.Sprintf("http://%s:%s",authHost,authPort))
-	r.POST("/api/authorize", proxy)
-	r.POST("/api/users", proxy)
 
 	r.Run(":8000")
 }
