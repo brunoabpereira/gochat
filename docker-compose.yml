@@ -1,6 +1,7 @@
 version: '2'
 
 services:
+
   postgresql:
     image: "postgres:16.0"
     ports:
@@ -27,6 +28,43 @@ services:
       - POSTGRES_PORT=5432
     depends_on:
       - postgresql
+    profiles:
+      - all
+  
+  chat:
+    image: "chat-server:latest"
+    ports:
+      - 9000:9000
+    environment:
+      - POSTGRES_PASSWORD=gochat
+      - POSTGRES_USER=gochat
+      - POSTGRES_DB=gochat
+      - POSTGRES_HOST=postgresql
+      - POSTGRES_PORT=5432
+      - SERVER_HOST=chat
+      - SERVER_PORT=9000
+    depends_on:
+      - postgresql
+      - auth
+    profiles:
+      - all
+
+  webapp:
+    image: "webapp:latest"
+    ports:
+      - 8000:8000
+    environment:
+      - POSTGRES_PASSWORD=gochat
+      - POSTGRES_USER=gochat
+      - POSTGRES_DB=gochat
+      - POSTGRES_HOST=postgresql
+      - POSTGRES_PORT=5432
+      - AUTH_HOST=auth
+      - AUTH_PORT=9999
+    depends_on:
+      - postgresql
+      - auth
+      - chat
     profiles:
       - all
 

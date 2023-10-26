@@ -1,6 +1,7 @@
 package main
 
 import (
+	"os"
 	"log"
 	"fmt"
 	"net/http"
@@ -249,24 +250,42 @@ func channelLoop(db *gorm.DB, connList *map[int]Channel, messageQ <-chan *Messag
 	}
 }
 
+func getEnvVar(name string, dflt string) string {
+	if val, ok := os.LookupEnv(name); ok {
+		return val
+	}
+	return dflt
+}
+
 func main() {
-	var upgrader = websocket.Upgrader{ReadBufferSize:  1024, WriteBufferSize: 1024}
-	var connList map[int]Channel = make(map[int]Channel)
-	var messageQ chan *Message = make(chan *Message)
+	serverHost := getEnvVar("SERVER_HOST", "localhost")
+	serverPort := getEnvVar("SERVER_PORT", "9000")
+	dbHost := getEnvVar("POSTGRES_HOST", "localhost")
+	dbPort := getEnvVar("POSTGRES_PORT", "5432")
+	dbName := getEnvVar("POSTGRES_DB", "gochat")
+	dbUser := getEnvVar("POSTGRES_USERNAME", "gochat")
+	dbPassword := getEnvVar("POSTGRES_PASSWORD", "gochat")
 	
-	var dsn string = "host=localhost user=gochat password=gochat dbname=gochat port=5432 sslmode=disable"
+	dsn := fmt.Sprintf(
+		"host=%s user=%s password=%s dbname=%s port=%s sslmode=disable",
+		dbHost, dbUser, dbPassword, dbName, dbPort,
+	)
 	db, err := gorm.Open(postgres.Open(dsn), &gorm.Config{})
 	if err != nil {
 		log.Fatalln(err)
 		return
 	}
 
+	var upgrader = websocket.Upgrader{ReadBufferSize:  1024, WriteBufferSize: 1024}
+	var connList map[int]Channel = make(map[int]Channel)
+	var messageQ chan *Message = make(chan *Message)
+
 	go channelLoop(db, &connList, messageQ)
 
 	handler := createHandler(&connList, messageQ, upgrader, db)
 	http.HandleFunc("/ws", handler)
 	server := &http.Server{
-		Addr:              "localhost:9000",
+		Addr:              fmt.Sprintf("%s:%s",serverHost,serverPort),
 		ReadHeaderTimeout: 3 * time.Second,
 	}
 	log.Println("Listening...")
