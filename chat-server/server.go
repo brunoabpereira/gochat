@@ -89,20 +89,19 @@ type Channel struct {
 	ChannelId int
 }
 
-func userIdFromCookie(cookie http.Cookie) int{
-	val, _ := strconv.Atoi(cookie.Value)
-	return val
+func userIdFromUsername(db *gorm.DB, username string) int{
+	var user User
+	db.Where("username = ?",username).Find(&user)
+	return user.Userid
 }
 
 func createHandler(channels *map[int]Channel, messageQ chan<- *Message, upgrader websocket.Upgrader, db *gorm.DB) func(http.ResponseWriter,*http.Request){
 	return func (w http.ResponseWriter, r *http.Request) {
-		_, auth := verifyUser(r)
+		claims, auth := verifyUser(r)
 		if !auth {
 			w.WriteHeader(http.StatusUnauthorized)
 			return
 		}
-		// var client Client = Client{Userid: userIdFromCookie(*cookie)}
-		
 		
 		upgrader.CheckOrigin = func(r *http.Request) bool { 
 			return true 
@@ -115,7 +114,9 @@ func createHandler(channels *map[int]Channel, messageQ chan<- *Message, upgrader
 		defer conn.Close()
 		log.Println("New connection from",conn.RemoteAddr().String())
 		
-		var client Client = Client{Userid: 2}
+		var client Client = Client{
+			Userid: userIdFromUsername(db, claims["sub"].(string)),
+		}
 		var channel Channel
 		var inChannel bool = false
 
@@ -139,13 +140,13 @@ func createHandler(channels *map[int]Channel, messageQ chan<- *Message, upgrader
 				channel = val
 				client.Conn = conn
 				if exists {
-					// _, exists := channel.Clients[client.Userid]
-					// if exists {
-					// 	log.Printf("Client %d already in Channel %d",client.Userid,channel.ChannelId)
-					// 	return
-					// }else {
-					// 	channel.Clients[client.Userid] = client
-					// }
+					_, exists := channel.Clients[client.Userid]
+					if exists {
+						log.Printf("Client %d already in Channel %d",client.Userid,channel.ChannelId)
+						return
+					}else {
+						channel.Clients[client.Userid] = client
+					}
 
 					channel.Clients[client.Userid] = client
 				}else{
