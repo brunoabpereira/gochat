@@ -15,6 +15,10 @@
   "scripts": {
     "start": "react-scripts start",
     "build": "react-scripts build",
+    "start:chatclient": "cp src/ChatClient.js src/App.js && npm run start",
+    "start:login": "cp src/Login.js src/App.js && npm run start",
+    "build:chatclient": "cp src/ChatClient.js src/App.js && npm run build && rm -rf build-chatclient && mv build build-chatclient",
+    "build:login": "cp src/Login.js src/App.js && npm run build && rm -rf build-login && mv build build-login",
     "test": "react-scripts test",
     "eject": "react-scripts eject"
   },

@@ -51,7 +51,7 @@ func verifyUser(c *gin.Context) (jwt.MapClaims, bool) {
 }
 
 /*
-	handlers accessable to auth users
+	handlers accessible to auth users
 */
 
 func index(c *gin.Context) {
@@ -70,7 +70,7 @@ func home(c *gin.Context) {
 		return
 	}
 
-	c.HTML(http.StatusOK, "index.html", nil)
+	c.HTML(http.StatusOK, "chatclient.html", nil)
 }
 
 func logout(c *gin.Context) {
@@ -146,16 +146,7 @@ func login(c *gin.Context) {
 		c.Redirect(http.StatusFound, "/")
 		return
 	}
-	c.HTML(http.StatusOK, "login.html", nil)
-}
-
-func register(c *gin.Context) {
-	_, auth := verifyUser(c)
-	if auth {
-		c.Redirect(http.StatusFound, "/")
-		return
-	}
-	c.HTML(http.StatusOK, "register.html", nil)
+	c.HTML(http.StatusOK, "index.html", nil)
 }
 
 func getEnvVar(name string, dflt string) string {
@@ -190,7 +181,6 @@ func main() {
 	r.GET("/", index)
 	r.GET("/login", login)
 	r.GET("/logout", logout)
-	r.GET("/register", register)
 	r.GET("/home", home)
 	r.GET(
 		"/api/users", 

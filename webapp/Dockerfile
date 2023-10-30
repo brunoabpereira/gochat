@@ -17,7 +17,9 @@ RUN cd chat-client/ && npm install --force
 COPY app.go  .
 COPY chat-client ./chat-client
 RUN go build -v -o run && \
-    cd chat-client/ && npm run build
+    cd chat-client/ && \
+    GENERATE_SOURCEMAP=false npm run build:chatclient && \
+    GENERATE_SOURCEMAP=false npm run build:login
 
 ###
 
@@ -27,7 +29,9 @@ ENV HTML_DIR="/app/build"
 
 COPY --from=build /src/run /app/run
 
-COPY --from=build /src/chat-client/build /app/build
+COPY --from=build /src/chat-client/build-login /app/build
+COPY --from=build /src/chat-client/build-chatclient/index.html /app/build/chatclient.html
+COPY --from=build /src/chat-client/build-chatclient/static/js/main.*.js /app/build/static/js/
 
 EXPOSE 8000
 
