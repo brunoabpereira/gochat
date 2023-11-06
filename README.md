@@ -1,15 +1,36 @@
 
-### auth service
+# gochat
+Web chat application.
 
-compile
+## compile and build images
 ```
-mvn clean package -DskipTests
+sudo docker compose build auth chatserver webapp
 ```
-build image
+
+## intialize db
+create tables and add mock data
 ```
-sudo docker build --tag=spring-auth:latest .
+sudo docker compose --profile initdb up
 ```
-run
+
+## run
+execute command and access "localhost:80"
 ```
-sudo docker compose up auth
+sudo docker compose --profile all up
 ```
+
+## description
+
+components:
+- web server using Go, Gin, GORM and JWT
+- chat service using Go, websockets, GORM and JWT
+- chat client using React and websockets
+- auth service using Java Spring Boot and JWT
+- nginx proxy
+- postgresql db
+
+architecture diagram:
+
+![](diagram.png)
+
+## tests (todo)
