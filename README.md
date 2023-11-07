@@ -10,7 +10,7 @@ sudo docker compose build auth chatserver webapp
 ## intialize db
 create tables and add mock data
 ```
-sudo docker compose --profile initdb up
+sudo docker compose --profile initdb up --abort-on-container-exit && sudo docker compose --profile initdb down
 ```
 
 ## run

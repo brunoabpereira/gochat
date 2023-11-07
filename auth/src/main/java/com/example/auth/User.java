@@ -1,4 +1,4 @@
-package com.example.gochat;
+package com.example.auth;
 
 import jakarta.persistence.Entity;
 import jakarta.persistence.Table;

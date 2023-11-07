@@ -11,6 +11,8 @@ CREATE TABLE gochat.users
     CONSTRAINT constraint_useremail UNIQUE (useremail)
 );
 
+CREATE UNIQUE INDEX username_idx ON gochat.users (username);
+CREATE UNIQUE INDEX useremail_idx ON gochat.users (useremail);
 
 CREATE TABLE gochat.channels
 (

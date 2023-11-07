@@ -1,4 +1,4 @@
-package com.example.gochat;
+package com.example.auth;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -6,6 +6,7 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.CookieValue;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
@@ -15,6 +16,7 @@ import jakarta.servlet.http.HttpServletResponse;
 import jakarta.servlet.http.Cookie;
 
 @RestController
+@RequestMapping("/api")
 public class AuthController {
 	
 	@Autowired
@@ -22,7 +24,7 @@ public class AuthController {
 	private static final String jwtCookieName = "JWTID";
 	private static final Logger log = LoggerFactory.getLogger(AuthController.class);
 
-	@PostMapping("/api/authorize")
+	@PostMapping("/authorize")
 	public void authorize(@RequestBody AuthorizeRequest authReq, HttpServletResponse response) {
 		User user = userRepo.findUserByEmail(authReq.getUseremail());
 		if (user == null) {
@@ -40,7 +42,7 @@ public class AuthController {
 		}
 	}
 
-	@PostMapping("/api/users")
+	@PostMapping("/users")
 	public ResponseEntity<ErrorResponse> registerUser(@RequestBody RegisterUserRequest regReq) {
 		String passwordSalt = JwtUtil.salt();
 		String passwordHash = JwtUtil.hash(regReq.getPassword(),passwordSalt);
@@ -64,7 +66,7 @@ public class AuthController {
 		}
 	}
 
-	@DeleteMapping("/api/users")
+	@DeleteMapping("/users")
 	public void deleteUser(@CookieValue(jwtCookieName) String jwtCookie, @RequestBody DeleteRequest delReq, HttpServletResponse response) {
 		if ( JwtUtil.extractSubject(jwtCookie).equals("admin") ){
 			User user = userRepo.findUserByEmail(delReq.getUseremail());

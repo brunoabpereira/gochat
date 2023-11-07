@@ -1,4 +1,4 @@
-package com.example.gochat;
+package com.example.auth;
 
 import java.util.Date;
 import java.nio.charset.StandardCharsets;
@@ -34,7 +34,11 @@ public class JwtUtil {
 	    Random secRandom = new SecureRandom();
 		byte[] salt = new byte[32];
 		secRandom.nextBytes(salt);
-		return new String(salt, StandardCharsets.UTF_8);
+		StringBuilder sb = new StringBuilder();
+		for(int i=0; i< salt.length ;i++){
+			sb.append(Integer.toString((salt[i] & 0xff) + 0x100, 16).substring(1));
+		}
+		return sb.toString();
 	}
 
 	public static String hash(String str, String salt){

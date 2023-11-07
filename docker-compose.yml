@@ -14,11 +14,12 @@ services:
       - POSTGRES_DB=gochat
     profiles:
       - all
+      - db
+      - initdb
 
   auth:
     image: "spring-auth:latest"
-    # ports:
-    #   - 9999:9999
+    build: ./auth
     environment:
       - SERVER_PORT=9999
       - POSTGRES_PASSWORD=gochat
@@ -33,8 +34,7 @@ services:
   
   chatserver:
     image: "chat-server:latest"
-    # ports:
-    #   - 9000:9000
+    build: ./chat-server
     environment:
       - POSTGRES_PASSWORD=gochat
       - POSTGRES_USER=gochat
@@ -51,8 +51,7 @@ services:
 
   webapp:
     image: "webapp:latest"
-    # ports:
-    #   - 8000:8000
+    build: ./webapp
     environment:
       - POSTGRES_PASSWORD=gochat
       - POSTGRES_USER=gochat
@@ -74,6 +73,21 @@ services:
       - 80:80
     profiles:
       - all
+
+  initdb:
+    image: alpine:3.18
+    volumes:
+      - ./db:/tmp/db
+    command: /bin/sh -c
+      'apk --update add postgresql-client &&
+      echo "*:*:gochat:gochat:gochat" > /tmp/.pgpass &&
+      chmod 600 /tmp/.pgpass &&
+      cd /tmp/db &&
+      PGPASSFILE=/tmp/.pgpass psql -h postgresql -U gochat -a -f init.sql'
+    depends_on:
+      - postgresql
+    profiles:
+      - initdb
 
 volumes:
   db:
