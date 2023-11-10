@@ -20,6 +20,9 @@ services:
   auth:
     image: "spring-auth:latest"
     build: ./auth
+    volumes:
+      - ./keys/private_key.der:/app/private_key.der
+      - ./keys/public_key.der:/app/public_key.der
     environment:
       - SERVER_PORT=9999
       - POSTGRES_PASSWORD=gochat
@@ -27,6 +30,8 @@ services:
       - POSTGRES_DB=gochat
       - POSTGRES_HOST=postgresql
       - POSTGRES_PORT=5432
+      - PRIVKEY_FILEPATH=/app/private_key.der
+      - PUBKEY_FILEPATH=/app/public_key.der
     depends_on:
       - postgresql
     profiles:
@@ -35,6 +40,8 @@ services:
   chatserver:
     image: "chat-server:latest"
     build: ./chat-server
+    volumes:
+      - ./keys/public_key.der:/app/public_key.der
     environment:
       - POSTGRES_PASSWORD=gochat
       - POSTGRES_USER=gochat
@@ -43,6 +50,7 @@ services:
       - POSTGRES_PORT=5432
       - SERVER_HOST=chatserver
       - SERVER_PORT=9000
+      - JWTKEY_FILENAME=/app/public_key.der
     depends_on:
       - postgresql
       - auth
@@ -52,12 +60,15 @@ services:
   webapp:
     image: "webapp:latest"
     build: ./webapp
+    volumes:
+      - ./keys/public_key.der:/app/public_key.der
     environment:
       - POSTGRES_PASSWORD=gochat
       - POSTGRES_USER=gochat
       - POSTGRES_DB=gochat
       - POSTGRES_HOST=postgresql
       - POSTGRES_PORT=5432
+      - JWTKEY_FILENAME=/app/public_key.der
     depends_on:
       - postgresql
       - auth

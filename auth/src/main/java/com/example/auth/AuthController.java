@@ -24,13 +24,16 @@ public class AuthController {
 	private static final String jwtCookieName = "JWTID";
 	private static final Logger log = LoggerFactory.getLogger(AuthController.class);
 
+	@Autowired
+	private JwtUtil jwtUtil;
+
 	@PostMapping("/authorize")
 	public void authorize(@RequestBody AuthorizeRequest authReq, HttpServletResponse response) {
 		User user = userRepo.findUserByEmail(authReq.getUseremail());
 		if (user == null) {
 			response.setStatus(HttpStatus.BAD_REQUEST.value());
 		}else if ( user.getUserhash().equals(JwtUtil.hash(authReq.getPassword(),user.getUsersalt())) ){
-			String token = JwtUtil.generateToken(user.getUsername());
+			String token = jwtUtil.generateToken(user.getUsername());
 			Cookie cookie = new Cookie(jwtCookieName,token);
 			cookie.setPath("/");
 			cookie.setHttpOnly(true); // this cookie will be hidden from scripts on the client side
@@ -68,7 +71,7 @@ public class AuthController {
 
 	@DeleteMapping("/users")
 	public void deleteUser(@CookieValue(jwtCookieName) String jwtCookie, @RequestBody DeleteRequest delReq, HttpServletResponse response) {
-		if ( JwtUtil.extractSubject(jwtCookie).equals("admin") ){
+		if ( jwtUtil.extractSubject(jwtCookie).equals("admin") ){
 			User user = userRepo.findUserByEmail(delReq.getUseremail());
 			if ( user == null ){
 				response.setStatus(HttpStatus.BAD_REQUEST.value());

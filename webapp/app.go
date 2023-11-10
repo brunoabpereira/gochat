@@ -1,7 +1,8 @@
 package main
 
 import (
-	"encoding/base64"
+	"crypto/rsa"
+	"crypto/x509"
 	"fmt"
 	"log"
 	"net/http"
@@ -12,15 +13,27 @@ import (
 	"gorm.io/gorm"
 )
 
-var base64HmacSecret = "26SrjQKKdr3Av2S04thIfsXcx4lSInVGjBYk5kUZrlSYFZfmGUZ9t9pcY8Rv8J2026SrjQKKdr3Av2S04thIfsXcx4lSInVGjBYk5kUZrlSYFZfmGUZ9t9pcY8Rv8J20"
+var pubKey *rsa.PublicKey
+
+func readJWTKey(jwtKeyFilename string) *rsa.PublicKey {
+	raw, err := os.ReadFile(jwtKeyFilename)
+	if err != nil {
+		panic("failed to read public key file" + err.Error())
+	}
+	pub, err := x509.ParsePKIXPublicKey(raw)
+	if err != nil {
+		panic("failed to parse DER encoded public key: " + err.Error())
+	}
+	return pub.(*rsa.PublicKey)
+}
 
 func parseToken(tokenString string) (*jwt.Token, error) {
 	token, err := jwt.Parse(tokenString, func(token *jwt.Token) (interface{}, error) {
-		if _, ok := token.Method.(*jwt.SigningMethodHMAC); !ok {
+		if _, ok := token.Method.(*jwt.SigningMethodRSA); !ok {
 			return nil, fmt.Errorf("Unexpected signing method: %v", token.Header["alg"])
 		}
-		hmacSecret, _ := base64.StdEncoding.DecodeString(base64HmacSecret)
-		return hmacSecret, nil
+
+		return pubKey, nil
 	})
 
 	return token, err
@@ -158,11 +171,14 @@ func getEnvVar(name string, dflt string) string {
 
 func main() {
 	htmlDir := getEnvVar("HTML_DIR", "chat-client/build")
+	jwtKeyFilename := getEnvVar("JWTKEY_FILENAME", "public_key.der")
 	dbHost := getEnvVar("POSTGRES_HOST", "localhost")
 	dbPort := getEnvVar("POSTGRES_PORT", "5432")
 	dbName := getEnvVar("POSTGRES_DB", "gochat")
 	dbUser := getEnvVar("POSTGRES_USERNAME", "gochat")
 	dbPassword := getEnvVar("POSTGRES_PASSWORD", "gochat")
+
+	pubKey = readJWTKey(jwtKeyFilename);
 
 	dsn := fmt.Sprintf(
 		"host=%s user=%s password=%s dbname=%s port=%s sslmode=disable",

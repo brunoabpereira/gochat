@@ -19,6 +19,11 @@ execute command and access "localhost:80"
 sudo docker compose --profile all up
 ```
 
+## erase db data
+```
+sudo docker volume rm gochat_db
+```
+
 ## description
 
 components:
@@ -31,6 +36,8 @@ components:
 
 architecture diagram:
 
-![](diagram.png)
+<p style="text-align: center">
+  <img src="diagram.png" />
+</p>
 
 ## tests (todo)
