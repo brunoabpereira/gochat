@@ -2,6 +2,15 @@
 # gochat
 Web chat application.
 
+# table of Contents
+
+- [compile, test and build images](#compile-test-and-build-images)
+- [intialize db](#intialize-db)
+- [run](#run)
+- [erase db data](#erase-db-data)
+- [description](#description)
+- [tests](#tests)
+
 ## compile, test and build images
 ```
 sudo docker compose build auth chatserver webapp
@@ -10,7 +19,8 @@ sudo docker compose build auth chatserver webapp
 ## intialize db
 Create tables and add mock data
 ```
-sudo docker compose --profile initdb up --abort-on-container-exit && sudo docker compose --profile initdb down
+sudo docker compose --profile initdb up --abort-on-container-exit && \
+sudo docker compose --profile initdb down
 ```
 
 ## run
@@ -45,4 +55,4 @@ Tests run automatically when building each service's docker image.
 
 The following services currently implement tests:
 
-- auth
+- auth (unit tests)
