@@ -18,7 +18,7 @@ import org.springframework.stereotype.Component;
 import io.jsonwebtoken.Jwts;
 
 @Component
-public class JwtUtil {
+public class AuthUtil {
     private static final long EXPIRATION_TIME = 1800_000; // 30 mins
 	private PublicKey pubKey;
 	private PrivateKey privKey;
@@ -56,7 +56,7 @@ public class JwtUtil {
             .getSubject();
     }
 
-    public static String salt(){
+    public String salt(){
 	    Random secRandom = new SecureRandom();
 		byte[] salt = new byte[32];
 		secRandom.nextBytes(salt);
@@ -67,7 +67,7 @@ public class JwtUtil {
 		return sb.toString();
 	}
 
-	public static String hash(String str, String salt){
+	public String hash(String str, String salt){
 		String hashstr = null;
 		try {
 			MessageDigest md = MessageDigest.getInstance("SHA-512");

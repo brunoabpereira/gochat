@@ -8,7 +8,7 @@ RUN mvn dependency:resolve
 
 # compile
 COPY . .
-RUN mvn package -DskipTests
+RUN mvn package
 
 ###
 

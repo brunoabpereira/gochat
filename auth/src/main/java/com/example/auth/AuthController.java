@@ -21,19 +21,19 @@ public class AuthController {
 	
 	@Autowired
     private UserRepository userRepo;
+	@Autowired
+	private AuthUtil auth;
+
 	private static final String jwtCookieName = "JWTID";
 	private static final Logger log = LoggerFactory.getLogger(AuthController.class);
-
-	@Autowired
-	private JwtUtil jwtUtil;
 
 	@PostMapping("/authorize")
 	public void authorize(@RequestBody AuthorizeRequest authReq, HttpServletResponse response) {
 		User user = userRepo.findUserByEmail(authReq.getUseremail());
 		if (user == null) {
 			response.setStatus(HttpStatus.BAD_REQUEST.value());
-		}else if ( user.getUserhash().equals(JwtUtil.hash(authReq.getPassword(),user.getUsersalt())) ){
-			String token = jwtUtil.generateToken(user.getUsername());
+		}else if ( user.getUserhash().equals(auth.hash(authReq.getPassword(),user.getUsersalt())) ){
+			String token = auth.generateToken(user.getUsername());
 			Cookie cookie = new Cookie(jwtCookieName,token);
 			cookie.setPath("/");
 			cookie.setHttpOnly(true); // this cookie will be hidden from scripts on the client side
@@ -47,8 +47,8 @@ public class AuthController {
 
 	@PostMapping("/users")
 	public ResponseEntity<ErrorResponse> registerUser(@RequestBody RegisterUserRequest regReq) {
-		String passwordSalt = JwtUtil.salt();
-		String passwordHash = JwtUtil.hash(regReq.getPassword(),passwordSalt);
+		String passwordSalt = auth.salt();
+		String passwordHash = auth.hash(regReq.getPassword(),passwordSalt);
 		User user = new User(
 			regReq.getUsername(),
 			passwordHash,
@@ -71,7 +71,7 @@ public class AuthController {
 
 	@DeleteMapping("/users")
 	public void deleteUser(@CookieValue(jwtCookieName) String jwtCookie, @RequestBody DeleteRequest delReq, HttpServletResponse response) {
-		if ( jwtUtil.extractSubject(jwtCookie).equals("admin") ){
+		if ( auth.extractSubject(jwtCookie).equals("admin") ){
 			User user = userRepo.findUserByEmail(delReq.getUseremail());
 			if ( user == null ){
 				response.setStatus(HttpStatus.BAD_REQUEST.value());

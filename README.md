@@ -2,19 +2,19 @@
 # gochat
 Web chat application.
 
-## compile and build images
+## compile, test and build images
 ```
 sudo docker compose build auth chatserver webapp
 ```
 
 ## intialize db
-create tables and add mock data
+Create tables and add mock data
 ```
 sudo docker compose --profile initdb up --abort-on-container-exit && sudo docker compose --profile initdb down
 ```
 
 ## run
-execute command and access "localhost:80"
+Execute command and access "localhost:80"
 ```
 sudo docker compose --profile all up
 ```
@@ -26,7 +26,7 @@ sudo docker volume rm gochat_db
 
 ## description
 
-components:
+Components:
 - web server using Go, Gin, GORM and JWT
 - chat service using Go, websockets, GORM and JWT
 - chat client using React and websockets
@@ -34,10 +34,15 @@ components:
 - nginx proxy
 - postgresql db
 
-architecture diagram:
+Architecture diagram:
 
 <p style="text-align: center">
   <img src="diagram.png" />
 </p>
 
-## tests (todo)
+## tests
+Tests run automatically when building each service's docker image. 
+
+The following services currently implement tests:
+
+- auth
