@@ -1,4 +1,4 @@
-\COPY users (userid,username,userhash,usersalt,useremail) FROM 'users.csv' WITH (FORMAT CSV, HEADER, DELIMITER ',');
+\COPY users (username,userhash,usersalt,useremail) FROM 'users.csv' WITH (FORMAT CSV, HEADER, DELIMITER ',');
 
 INSERT INTO gochat.channels
 (channelname)
