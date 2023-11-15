@@ -2,11 +2,11 @@
 # gochat
 Web chat application.
 
-# table of Contents
+# table of contents
 
 - [compile, test and build images](#compile-test-and-build-images)
 - [intialize db](#intialize-db)
-- [run](#run)
+- [run application](#run-application)
 - [erase db data](#erase-db-data)
 - [description](#description)
 - [tests](#tests)
@@ -23,7 +23,7 @@ sudo docker compose --profile initdb up --abort-on-container-exit && \
 sudo docker compose --profile initdb down
 ```
 
-## run
+## run application
 Execute command and access "localhost:80"
 ```
 sudo docker compose --profile all up
