@@ -1,4 +1,4 @@
-package com.example.auth;
+package com.example.auth.controller;
 
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.BeforeEach;
@@ -7,10 +7,18 @@ import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMock
 import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
 import org.springframework.boot.test.mock.mockito.MockBean;
 import org.springframework.test.web.servlet.MockMvc;
+
+import com.example.auth.exception.IncorrectUserPasswordException;
+import com.example.auth.exception.UserWithEmailNotFoundException;
+import com.example.auth.model.AuthorizeRequest;
+import com.example.auth.service.AuthService;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.springframework.http.MediaType;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
+import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.AdditionalMatchers.not;
 import static org.mockito.Mockito.when;
 
 @WebMvcTest( controllers = AuthController.class )
@@ -19,20 +27,22 @@ class AuthControllerTests {
 
 	@Autowired
 	private MockMvc mvc;
-	@MockBean
-    private UserRepository userRepo;
-	@MockBean
-	private AuthUtil auth;
 	@Autowired
 	private ObjectMapper objectMapper;
+	@MockBean
+    private AuthService authService;
 
 	@BeforeEach
-	public void setUp() {
+	public void setUp() throws Exception {
+		String userEmail = "test@example.com";
 		String userPassword = "test";
-		String userHash = "abc";
-		User user = new User("test", userHash, "123", "test@example.com");
-		when(userRepo.findUserByEmail(user.getUseremail())).thenReturn(user);
-		when(auth.hash(userPassword, user.getUsersalt())).thenReturn(userHash);
+		when(authService.authorize(userEmail, userPassword)).thenReturn("token");
+		when(authService.authorize(eq(userEmail), not(eq(userPassword)))).thenThrow(new IncorrectUserPasswordException(""));
+		when(authService.authorize(not(eq(userEmail)), anyString())).thenThrow(new UserWithEmailNotFoundException(""));
+	}
+
+	@Test
+	void contextLoads() {
 	}
 
 	@Test

@@ -149,18 +149,10 @@ func createHandler(channels *map[int]Channel, messageQ chan<- *Message, upgrader
 					return
 				}
 
-				val, exists := (*channels)[channelId]
+				val, channelExists := (*channels)[channelId]
 				channel = val
 				client.Conn = conn
-				if exists {
-					_, exists := channel.Clients[client.Userid]
-					if exists {
-						log.Printf("Client %d already in Channel %d",client.Userid,channel.ChannelId)
-						return
-					}else {
-						channel.Clients[client.Userid] = client
-					}
-
+				if channelExists {
 					channel.Clients[client.Userid] = client
 				}else{
 					channel = Channel{

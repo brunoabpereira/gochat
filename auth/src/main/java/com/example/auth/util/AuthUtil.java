@@ -1,4 +1,4 @@
-package com.example.auth;
+package com.example.auth.util;
 
 import java.util.Date;
 import java.nio.charset.StandardCharsets;
@@ -19,7 +19,9 @@ import io.jsonwebtoken.Jwts;
 
 @Component
 public class AuthUtil {
-    private static final long EXPIRATION_TIME = 1800_000; // 30 mins
+
+	@Value("${jwtExpirationTime}")
+    private final long jwtExpirationTime = 1800000;
 	private PublicKey pubKey;
 	private PrivateKey privKey;
 
@@ -42,7 +44,7 @@ public class AuthUtil {
     public String generateToken(String subject) {
         return Jwts.builder()
             .subject(subject)
-            .expiration(new Date(System.currentTimeMillis() + EXPIRATION_TIME))
+            .expiration(new Date(System.currentTimeMillis() + jwtExpirationTime))
             .signWith(privKey)
             .compact();
     }
