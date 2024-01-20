@@ -38,8 +38,8 @@ services:
       - all
   
   chatserver:
-    image: "chat-server:latest"
-    build: ./chat-server
+    image: "chatserver:latest"
+    build: ./chatserver
     volumes:
       - ./keys/public_key.der:/app/public_key.der
     environment:

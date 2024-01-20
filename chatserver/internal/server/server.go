@@ -1,7 +1,6 @@
-package main
+package server
 
 import (
-	"os"
 	"log"
 	"fmt"
 	"net/http"
@@ -9,40 +8,58 @@ import (
 	"time"
 	"encoding/json"
 	"crypto/rsa"
-	"crypto/x509"
 	"github.com/gorilla/websocket"
-	"gorm.io/driver/postgres"
 	"gorm.io/gorm"
 	"github.com/golang-jwt/jwt/v5"
+
+	"chatserver/internal/utils"
+	"chatserver/internal/model"
 )
 
-var pubKey *rsa.PublicKey
-
-func readJWTKey(jwtKeyFilename string) *rsa.PublicKey {
-	raw, err := os.ReadFile(jwtKeyFilename)
-	if err != nil {
-		panic("failed to read public key file" + err.Error())
-	}
-	pub, err := x509.ParsePKIXPublicKey(raw)
-	if err != nil {
-		panic("failed to parse DER encoded public key: " + err.Error())
-	}
-	return pub.(*rsa.PublicKey)
+type Payload struct {
+	Op string
+	Value string
 }
 
-func parseToken(tokenString string) (*jwt.Token, error) {
+type Message struct {
+    Messagetime time.Time
+    Messagetext string
+    Userid int
+    Channelid int
+}
+
+type Client struct{
+	Userid int
+	Conn *websocket.Conn
+}
+
+type Channel struct {
+	Clients map[int]Client
+	ChannelId int
+}
+
+type Chatserver struct {
+	serverHost string
+	serverPort string
+	db *gorm.DB
+	messageQ chan *Message
+	channels map[int]Channel
+	pubKey *rsa.PublicKey
+}
+
+func (chatserver *Chatserver) parseToken(tokenString string) (*jwt.Token, error) {
 	token, err := jwt.Parse(tokenString, func(token *jwt.Token) (interface{}, error) {
 		if _, ok := token.Method.(*jwt.SigningMethodRSA); !ok {
 			return nil, fmt.Errorf("Unexpected signing method: %v", token.Header["alg"])
 		}
 
-		return pubKey, nil
+		return chatserver.pubKey, nil
 	})
 
 	return token, err
 }
 
-func verifyUser(r *http.Request) (jwt.MapClaims, bool) {
+func (chatserver *Chatserver) verifyUser(r *http.Request) (jwt.MapClaims, bool) {
 	jwtid, err := r.Cookie("JWTID")
 
 	if err != nil {
@@ -50,7 +67,7 @@ func verifyUser(r *http.Request) (jwt.MapClaims, bool) {
 		return nil, false
 	}
 
-	token, err := parseToken(jwtid.Value)
+	token, err := chatserver.parseToken(jwtid.Value)
 	if err != nil{
 		log.Println(err)
 		return nil, false
@@ -66,51 +83,17 @@ func verifyUser(r *http.Request) (jwt.MapClaims, bool) {
 	return claims, true
 }
 
-type Message struct {
-    Messagetime time.Time
-    Messagetext string
-    Userid int
-    Channelid int
-}
-
-type User struct {
-	Userid int
-    Username string
-    Userhash string
-    Usersalt string
-    Useremail string
-}
-
-type ChatMessage struct {
-	Username string
-	Text string
-	Timestamp string
-}
-
-type Payload struct {
-	Op string
-	Value string
-}
-
-type Client struct{
-	Userid int
-	Conn *websocket.Conn
-}
-
-type Channel struct {
-	Clients map[int]Client
-	ChannelId int
-}
-
-func userIdFromUsername(db *gorm.DB, username string) int{
-	var user User
-	db.Where("username = ?",username).Find(&user)
+func (chatserver *Chatserver) userIdFromUsername(username string) int {
+	var user model.User
+	chatserver.db.Where("username = ?",username).Find(&user)
 	return user.Userid
 }
 
-func createHandler(channels *map[int]Channel, messageQ chan<- *Message, upgrader websocket.Upgrader, db *gorm.DB) func(http.ResponseWriter,*http.Request){
+func (chatserver *Chatserver) createHandler() func(http.ResponseWriter,*http.Request) {
+	var upgrader = websocket.Upgrader{ReadBufferSize:  1024, WriteBufferSize: 1024}
+	
 	return func (w http.ResponseWriter, r *http.Request) {
-		claims, auth := verifyUser(r)
+		claims, auth := chatserver.verifyUser(r)
 		if !auth {
 			w.WriteHeader(http.StatusUnauthorized)
 			return
@@ -128,7 +111,7 @@ func createHandler(channels *map[int]Channel, messageQ chan<- *Message, upgrader
 		log.Println("New connection from",conn.RemoteAddr().String())
 		
 		var client Client = Client{
-			Userid: userIdFromUsername(db, claims["sub"].(string)),
+			Userid: chatserver.userIdFromUsername(claims["sub"].(string)),
 		}
 		var channel Channel
 		var inChannel bool = false
@@ -149,7 +132,7 @@ func createHandler(channels *map[int]Channel, messageQ chan<- *Message, upgrader
 					return
 				}
 
-				val, channelExists := (*channels)[channelId]
+				val, channelExists := chatserver.channels[channelId]
 				channel = val
 				client.Conn = conn
 				if channelExists {
@@ -159,7 +142,7 @@ func createHandler(channels *map[int]Channel, messageQ chan<- *Message, upgrader
 						Clients: map[int]Client{client.Userid: client},
 						ChannelId: channelId,
 					}
-					(*channels)[channelId] = channel
+					chatserver.channels[channelId] = channel
 				}
 
 				inChannel = true
@@ -171,13 +154,13 @@ func createHandler(channels *map[int]Channel, messageQ chan<- *Message, upgrader
 						break
 					}
 					var msgs []Message
-					db.Where("channelid = ?",channel.ChannelId).Order("messagetime DESC").Limit(msgNum).Offset(0).Find(&msgs)
+					chatserver.db.Where("channelid = ?",channel.ChannelId).Order("messagetime DESC").Limit(msgNum).Offset(0).Find(&msgs)
 					
-					var chatMsgs [] ChatMessage
+					var chatMsgs []model.ChatMessage
 					for i := range msgs {
-						var user User
-						db.First(&user, msgs[i].Userid)
-						chatMsgs = append(chatMsgs, ChatMessage{
+						var user model.User
+						chatserver.db.First(&user, msgs[i].Userid)
+						chatMsgs = append(chatMsgs, model.ChatMessage{
 							Username: user.Username,
 							Text: msgs[i].Messagetext,
 							Timestamp: msgs[i].Messagetime.Format("2006-01-02 15:04:05"),
@@ -199,7 +182,7 @@ func createHandler(channels *map[int]Channel, messageQ chan<- *Message, upgrader
 						client.Userid,
 						channel.ChannelId,
 					}
-					messageQ <- &msg
+					chatserver.messageQ <- &msg
 				}else {
 					log.Printf("Client %d is not in Channel %d",client.Userid,channel.ChannelId)
 					return
@@ -211,7 +194,7 @@ func createHandler(channels *map[int]Channel, messageQ chan<- *Message, upgrader
 					return
 				}
 
-				channel, exists := (*channels)[channelId]
+				channel, exists := chatserver.channels[channelId]
 				if exists {
 					delete(channel.Clients, client.Userid)
 				}
@@ -224,20 +207,20 @@ func createHandler(channels *map[int]Channel, messageQ chan<- *Message, upgrader
 	}
 }
 
-func channelLoop(db *gorm.DB, connList *map[int]Channel, messageQ <-chan *Message){
+func (chatserver *Chatserver) channelLoop() {
 	for {
-		msg := <- messageQ
+		msg := <- chatserver.messageQ
 		// persist
-		go db.Create(&msg)
+		go chatserver.db.Create(&msg)
 		// send to chat channel
-		channel := (*connList)[msg.Channelid]
+		channel := chatserver.channels[msg.Channelid]
 		clients := channel.Clients
 		for clientId := range clients {
 			conn := clients[clientId].Conn
 			
-			var user User
-			db.First(&user, msg.Userid)
-			b, err := json.Marshal(ChatMessage{
+			var user model.User
+			chatserver.db.First(&user, msg.Userid)
+			b, err := json.Marshal(model.ChatMessage{
 				Username: user.Username,
 				Text: msg.Messagetext,
 				Timestamp: msg.Messagetime.Format("2006-01-02 15:04:05"),
@@ -256,50 +239,31 @@ func channelLoop(db *gorm.DB, connList *map[int]Channel, messageQ <-chan *Messag
 	}
 }
 
-func getEnvVar(name string, dflt string) string {
-	if val, ok := os.LookupEnv(name); ok {
-		return val
-	}
-	return dflt
-}
+func (chatserver *Chatserver) Run() {
+	go chatserver.channelLoop()
 
-func main() {
-	jwtKeyFilename := getEnvVar("JWTKEY_FILENAME", "public_key.der")
-	serverHost := getEnvVar("SERVER_HOST", "localhost")
-	serverPort := getEnvVar("SERVER_PORT", "9000")
-	dbHost := getEnvVar("POSTGRES_HOST", "localhost")
-	dbPort := getEnvVar("POSTGRES_PORT", "5432")
-	dbName := getEnvVar("POSTGRES_DB", "gochat")
-	dbUser := getEnvVar("POSTGRES_USERNAME", "gochat")
-	dbPassword := getEnvVar("POSTGRES_PASSWORD", "gochat")
-
-	pubKey = readJWTKey(jwtKeyFilename);
-	
-	dsn := fmt.Sprintf(
-		"host=%s user=%s password=%s dbname=%s port=%s sslmode=disable",
-		dbHost, dbUser, dbPassword, dbName, dbPort,
-	)
-	db, err := gorm.Open(postgres.Open(dsn), &gorm.Config{})
-	if err != nil {
-		log.Fatalln(err)
-		return
-	}
-
-	var upgrader = websocket.Upgrader{ReadBufferSize:  1024, WriteBufferSize: 1024}
-	var connList map[int]Channel = make(map[int]Channel)
-	var messageQ chan *Message = make(chan *Message)
-
-	go channelLoop(db, &connList, messageQ)
-
-	handler := createHandler(&connList, messageQ, upgrader, db)
+	handler := chatserver.createHandler()
 	http.HandleFunc("/ws", handler)
+	addr := fmt.Sprintf("%s:%s", chatserver.serverHost, chatserver.serverPort)
 	server := &http.Server{
-		Addr:              fmt.Sprintf("%s:%s",serverHost,serverPort),
+		Addr:              addr,
 		ReadHeaderTimeout: 3 * time.Second,
 	}
-	log.Println("Listening...")
-	err = server.ListenAndServe()
+
+	log.Println("Listening on address", addr)
+	err := server.ListenAndServe()
 	if err != nil {
 		log.Fatal("ListenAndServe: ", err)
 	}
+}
+
+func NewChatserver(serverHost string, serverPort string, db *gorm.DB, jwtKeyFilename string) (Chatserver, error){
+	return Chatserver{
+		serverHost: serverHost,
+		serverPort: serverPort,
+		db: db,
+		messageQ: make(chan *Message),
+		channels: make(map[int]Channel),
+		pubKey: utils.ReadJWTKey(jwtKeyFilename),
+	}, nil
 }

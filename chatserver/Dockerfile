@@ -8,7 +8,7 @@ RUN go mod download && go mod verify
 
 # compile
 COPY . .
-RUN go build -v -o run 
+RUN go build -v -o run ./cmd/chatserver
 
 ###
 
